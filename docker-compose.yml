@@ -14,11 +14,11 @@ services:
     image: postgres:13.10
     env_file: .env
     environment:
-      POSTGRES_DB: warehouse  # Указывает название создаваемой базы данных
-      POSTGRES_USER: postgres  # Укажите имя пользователя
-      POSTGRES_PASSWORD: postgres  # Укажите пароль
+      POSTGRES_DB: warehouse
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
 
