@@ -8,7 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_async_session
 from app.crud.batch import batch_crud
 from app.crud.product import product_crud
-from app.schemas.batch import BatchCreate, BatchDB, BatchUpdate, BatchUpdateStage, BatchUpdated
+from app.schemas.batch import (BatchCreate, BatchDB, BatchUpdate, BatchUpdated,
+                               BatchUpdateStage)
 
 router = APIRouter()
 
@@ -33,10 +34,10 @@ async def create_batch(
 
 
 @router.patch('/batches/{batch_id}/stages',
-             response_model=BatchUpdated,
-             status_code=HTTPStatus.OK,
-             summary='Редактировать статус партии',
-             )
+              response_model=BatchUpdated,
+              status_code=HTTPStatus.OK,
+              summary='Редактировать статус партии',
+              )
 async def update_batch(
         batch_id: int,
         batch: BatchUpdateStage,

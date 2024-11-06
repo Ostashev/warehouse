@@ -1,8 +1,11 @@
-import pytest
-from httpx import AsyncClient, ASGITransport
 from unittest.mock import AsyncMock, patch
-from app.schemas.product import ProductDB
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+
 from app.main import app
+from app.schemas.product import ProductDB
+
 
 @pytest.mark.asyncio
 async def test_get_product_by_id():

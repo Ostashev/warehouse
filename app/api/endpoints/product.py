@@ -2,18 +2,13 @@ import logging
 from http import HTTPStatus
 from typing import List
 
-from fastapi import APIRouter, Depends, Request, HTTPException
-from fastapi.encoders import jsonable_encoder
-from sqlalchemy import select, func, or_, insert
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, aliased
 
-from app.core.config import settings
+from app.core.cache import get_cached_data, set_cached_data
 from app.core.db import get_async_session
-from app.models import *
 from app.crud.product import product_crud
 from app.schemas.product import ProductDB
-from app.core.cache import get_cached_data, set_cached_data
 
 router = APIRouter()
 
@@ -34,21 +29,16 @@ async def get_products(
 
     cache_key = "all_products"
 
-    # Проверяем кэш
     cached_data = get_cached_data(cache_key)
     if cached_data is not None:
         logger.info("Данные получены из кэша")
-        # Преобразуем кэшированные данные обратно в объекты ProductDB
         return [ProductDB.parse_obj(item) for item in cached_data]
 
     try:
-        # Получаем данные из базы данных
         products = await product_crud.get_multi(session)
 
-        # Преобразуем продукты в модели Pydantic
         products_data = [ProductDB.from_orm(product) for product in products]
 
-        # Сохраняем данные в кэш, преобразуя в JSON
         set_cached_data(cache_key, [product.dict() for product in products_data])
 
         logger.info("Продукты успешно получены и сохранены в кэше")
@@ -74,7 +64,6 @@ async def get_product(
     logger.info(f"Запрос на получение продукта с product_id={product_id}")
     cache_key = f"product_{product_id}"
 
-    # Проверяем кэш
     cached_data = get_cached_data(cache_key)
     if cached_data is not None:
         logger.info(f"Данные для product_id={product_id} получены из кэша")
@@ -91,6 +80,3 @@ async def get_product(
     except Exception as e:
         logger.exception(f"Непредвиденная ошибка при получении продукта с product_id={product_id}")
         raise HTTPException(status_code=500, detail="Произошла непредвиденная ошибка")
-
-
-

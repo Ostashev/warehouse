@@ -1,7 +1,10 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, CheckConstraint, Boolean
-from sqlalchemy.orm import relationship
-from app.core.db import Base
 from datetime import datetime
+
+from sqlalchemy import (Boolean, CheckConstraint, Column, DateTime, ForeignKey,
+                        Integer, String)
+from sqlalchemy.orm import relationship
+
+from app.core.db import Base
 
 
 class Product(Base):

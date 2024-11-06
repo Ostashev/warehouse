@@ -1,9 +1,8 @@
 import uvicorn
 from fastapi import FastAPI
-
-from app.api.routers import main_router
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routers import main_router
 from app.core.config import settings
 
 app = FastAPI(root_path=settings.api_root_path)

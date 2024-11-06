@@ -1,5 +1,6 @@
 import logging
 from http import HTTPStatus
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,8 +9,9 @@ from app.core.db import get_async_session
 from app.crud.batch import batch_crud
 from app.crud.inventory import inventory_crud
 from app.crud.product import product_crud
-from app.schemas.inventory import InventoryResponse, Inventory
-
+from app.schemas.inventory import (InventorProducts, Inventory,
+                                   InventoryResponse, Shipment,
+                                   ShipmentProduct, ShipmentResponse)
 
 router = APIRouter()
 
@@ -18,10 +20,10 @@ logger = logging.getLogger(__name__)
 
 
 @router.put('/receive-batch/{batch_id}',
-             response_model=InventoryResponse,
-             status_code=HTTPStatus.OK,
-             summary='Приемка готовой партии товара на склад',
-             )
+            response_model=InventoryResponse,
+            status_code=HTTPStatus.OK,
+            summary='Приемка готовой партии товара на склад',
+            )
 async def update_inventory(
         batch_id: int,
         session: AsyncSession = Depends(get_async_session),
@@ -59,3 +61,66 @@ async def update_inventory(
             quantity=obj.quantity
         )
     )
+
+
+@router.post('/shipments',
+             response_model=ShipmentResponse,
+             status_code=HTTPStatus.CREATED,
+             summary='Оформление отгрузки товара клиенту.',
+             )
+async def create_shipment(
+        shipment: Shipment,
+        session: AsyncSession = Depends(get_async_session),
+) -> ShipmentResponse:
+    logger.info(f'Попытка отгрузки товара клиенту.')
+
+    product_counts = {}
+    bad_result = []
+
+    for item in shipment.items:
+        product_id = item.product_id
+        if product_id in product_counts:
+            product_counts[product_id] += 1
+        else:
+            product_counts[product_id] = 1
+
+    for product_id, count in product_counts.items():
+        inventory = await inventory_crud.get(product_id, session)
+
+        if count < inventory.quantity:
+            inventory.quantity -= count
+        elif count == inventory.quantity:
+            inventory.quantity -= count
+            product = await product_crud.get(product_id, session)
+            product.current_status = 'OUT_OF_STOCK'
+        else:
+            bad_result.append(
+                f'Недостаточно товара с ID {product_id}. Требуется: {count}, доступно: {inventory.quantity}.'
+            )
+    if bad_result:
+        logger.error(f'Ошибки при оформлении отгрузки: {"; ".join(bad_result)}')
+        raise HTTPException(status_code=409, detail="; ".join(bad_result))
+    await session.commit()
+    logger.info(f'Отгрузка товара для заказа {shipment.order} успешно оформлена.')
+
+    result = ShipmentResponse(
+        order=shipment.order,
+        items=[ShipmentProduct(product_id=item.product_id) for item in shipment.items],
+        status='SHIPPED'
+    )
+
+    return result
+
+
+@router.get('/inventory',
+            response_model=List[InventorProducts],
+            status_code=HTTPStatus.OK,
+            summary='Получение текущих остатков товаров на складе.',
+            )
+async def get_inventory(
+        session: AsyncSession = Depends(get_async_session),
+) -> List[InventorProducts]:
+    logger.info('Запрос на получение текущих остатков товаров на складе.')
+    inventories = await inventory_crud.get_inventories(session)
+    logger.info(f'Получено {len(inventories)} записей об остатках товаров на складе.')
+    return inventories
